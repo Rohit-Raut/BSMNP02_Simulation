@@ -1,0 +1,63 @@
+#include "services_protodunevd.fcl"
+#include "corsika_protodune.fcl"
+#include "dune_radiological_model.fcl"
+#include "genie_protodunevd.fcl"
+
+
+process_name:CosmicGen
+
+services:
+{
+	TFileService:				{fileName:"gen_protodunevd_cosmis_hist.root"}
+	TimeTracker: 				@local::dune_time_tracker
+	MemoryTracker: 				@local::dune_memory_tracker
+	RandomNumberGenerator:			{}
+	FileCatalogMetadata:			@local::art_file_catalog_mc
+	@table::protodunevd_simulation_services
+    IFDH:{}
+}
+
+#starting sourcing with empty event
+source:
+{
+	module_type: 				EmptyEvent
+	timestampPlugin:			{plugin_type:"GeneratedEventTimestamp"}
+	maxEvents:				10000
+	firstRun:				1
+	firstEvent:				1
+
+}
+
+physics:
+{
+	producers:
+	{
+        neutrinogenerator:      @local::protodunevd_genie
+		cosmicgenerator:        @local::protodune_corsika_cmc
+        #cosmicgenerator: 		@local::standard_CORSIKAGendp_CMC
+	}
+	simulate: 				[neutrinogenerator, cosmicgenerator]
+	stream1: 				[out1]
+	trigger_paths:				[simulate]
+	end_paths:				[stream1]
+
+}
+
+outputs:
+{
+	out1:
+	{
+		module_type: 			RootOutput
+		fileName: 			"/pnfs/dune/scratch/users/rraut/neutrino_cosmic/gen_cosmic.root"
+		dataTier: 			"generated"
+		compressionLevel:		1
+
+	}
+}
+protodunevd_genie.FluxCopyMethod:"IFDH"
+services.TFileService.fileName: 				"gen_protodunevd_cosmic_hist.root"
+source.maxEvents: 								10000
+outputs.out1.fileName: 							"/pnfs/dune/scratch/users/rraut/neutrino_cosmic/gen_cosmic.root"
+physics.producers.cosmicgenerator.SampleTime: 	6.0e-3
+physics.producers.cosmicgenerator.TimeOffset: 	-3.0e-3
+

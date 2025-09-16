@@ -1,0 +1,80 @@
+#include "triggersim_makers.fcl"
+#include "triggersim.fcl"
+#include "services_protodunevd.fcl"
+#include "wirecell_dune.fcl"
+#include "opticaldetectormodules_dune.fcl"
+
+process_name: DetsimCosmic
+
+#ta_algconfig_simplewindow:{
+#    window_length:          3000
+#    adc_threshold:          0
+#}
+
+
+services:
+{
+	#TFileService: 		{fileName: "/pnfs/dune/scratch/users/rraut/hist/detsim_hist.root"}
+	TimeTracker:		@local::dune_time_tracker
+	MemoryTracker:		@local::dune_memory_tracker
+	RandomNumberGenerator:	{}
+	FileCatalogMetadata:	@local::art_file_catalog_mc
+	@table::protodunevd_simulation_services
+}
+
+source:
+{
+	module_type:	RootInput
+	maxEvents:	100
+	fileNames:	["/pnfs/dune/scratch/users/rraut/neutrino_cosmic/g4_stage2.root"]
+}
+
+physics:
+{
+	producers: 
+	{
+	    tpcrawdecoder: 	@local::wirecell_protodunevd_mc
+	    rns:		        {module_type: "RandomNumberSaver"}
+	    tpmakerTPC:{ 
+            module_type:    TriggerPrimitiveMakerTPC
+            rawdigit_tag:   "tpcrawdecoder:daq"
+            tpalg:{
+                tool_type:  TPAlgTPCSimpleThreshold
+                verbosity:  0
+                threshold_tpg_plane0: 60
+                threshold_tpg_plane1: 60
+                threshold_tpg_plane2: 60
+            }
+        }
+        tamakerTPC:{
+            module_type:    TriggerActivityMakerTPC
+            tp_tag:         "tpmakerTPC"
+            algorithm:      "TriggerActivityMakerADCSimpleWindowPlugin"
+            algconfig_plane0:   {window_length: 20000 adc_threshold:8000000}
+            algconfig_plane1:   {window_length: 20000 adc_threshold:8000000}
+            algconfig_plane2:   {window_length: 20000 adc_threshold:8000000}
+            mergecollwires:     false
+            flush:              true
+            prescale:           1
+            verbosity:          1
+        }
+    }
+    simulate: 		  [rns, tpcrawdecoder, tpmakerTPC, tamakerTPC]
+    stream1:		    [out1]
+    trigger_paths:  [simulate]
+    end_paths:		  [stream1]
+  }
+outputs:
+  {
+    out1:
+    {
+                module_type: 	RootOutput
+                fileName: 	"/pnfs/dune/scratch/users/rraut/neutrino_cosmic/detsim_neutrinocosmic.root"
+                dataTier:	"detector-simulated"
+                compressionLevel:1
+                fastCloning:	true
+                outputCommands:["keep *"]
+                #outputCommands:["keep *", "drop sim::SimEnergyDeposits*_*_*_*"]
+    }
+  }
+  physics.producers.tpcrawdecoder.wcls_main.structs.elecGain:   7.8 # mV/fC
